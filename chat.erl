@@ -15,15 +15,31 @@ handle_packet(#xmlel{name = PktName} = Pkt) ->
 	  exmpp_xml:get_attribute(Pkt, type, "normal"),
 	  exmpp_xml:get_element(Pkt, "body")} of
 	{message, PktType, #xmlel{} = Body} when PktType =/= "error" ->
+	    %% TODO: strip JID
 	    [_ | _] = From = exmpp_xml:get_attribute(Pkt, from, ""),
 	    BodyText = strip(
 			 binary_to_list(
 			   exmpp_xml:get_cdata(Body))),
 	    io:format("Body: ~p~nBodyText: ~p~n",[Body,BodyText]),
-	    Reply = handle_text(From, BodyText),
+	    case handle_text(From, BodyText) of
+		{Text, HTML} ->
+		    Children =
+			[{xmlelement, "body", [],
+			  [{xmlcdata, Text}]},
+			 {xmlelement, "html", [{"xmlns", ?NS_XHTML_IM_s}],
+			  [{xmlelement, "body", [{"xmlns", ?NS_XHTML_s}],
+			    HTML}]}];
+		Text when is_list(Text) ->
+		    Children =
+			[{xmlelement, "body", [],
+			  [{xmlcdata, Text}]}]
+	    end,
+
+	    Children1 = lists:map(fun exmpp_xml:xmlelement_to_xmlel/1,
+				  Children),
 	    client:send(
 	      exmpp_stanza:set_recipient(
-		exmpp_message:chat(Reply),
+		(exmpp_message:chat())#xmlel{children = Children1},
 		From)),
 	    ok;
 	_ ->
@@ -39,6 +55,23 @@ strip(S) ->
     S4 = lists:dropwhile(WhitespaceDropper, S3),
     S5 = lists:reverse(S4),
     S5.
+
+-define(UL(LIs), {xmlelement, "ul", [], LIs}).
+-define(LI(Els), {xmlelement, "li", [], Els}).
+-define(A(Href, Text), {xmlelement, "a", [{"href", Href}],
+			[{xmlcdata, Text}]}).
+
+handle_text(From, "list") ->
+    Subscriptions = subscriptions:get_user_subscriptions(From),
+    {"Subscriptions:\n" ++ [JID ++ " " ++ Node ++ "\n"
+			    || {JID, Node} <- Subscriptions],
+     [{xmlelement, "h3", [],
+       [{xmlcdata, "Subscriptions"}]},
+      {xmlelement, "table", [{"border", "1"}],
+       [?UL([?LI([?A("xmpp:" ++ JID ++ "?pubsub", JID),
+		  {xmlcdata, " "},
+		  ?A("xmpp:" ++ JID ++ "?pubsub;node=" ++ Node, Node)])
+	     || {JID, Node} <- Subscriptions])]}]};
 
 handle_text(From, "subscribe " ++ JID_Node) ->
     [JID | NodeParts] = string:tokens(JID_Node, " "),

@@ -1,10 +1,28 @@
 -module(item_to_msg).
 
--export([transform_item/1]).
+-export([transform_items/2]).
 
 -include_lib("exmpp_xml.hrl").
 -include_lib("exmpp_nss.hrl").
 
+transform_items(JID, #xmlel{name = items} = Items) ->
+    Node = exmpp_xml:get_attribute(Items, node, ""),
+    {Texts, HTMLChildren} =
+	lists:foldr(
+	  fun(Item, {Texts, HTMLChildren}) ->
+		  {Texts1, HTMLChildren1} = transform_item(Item),
+		  {Texts1 ++ Texts, HTMLChildren1 ++ HTMLChildren}
+	  end, {[], []}, exmpp_xml:get_elements(Items, item)),
+    [{xmlelement, "body", [],
+      [{xmlcdata, string:join(
+		    ["Updates for " ++ JID ++ " " ++ Node
+		     | Texts], "\n")}]},
+     {xmlelement, "html", [{"xmlns", ?NS_XHTML_IM_s}],
+      [{xmlelement, "body", [{"xmlns", ?NS_XHTML_s}],
+	[{xmlelement, "h3", [],
+	  [{xmlcdata, "Updates for " ++ JID ++ " " ++ Node}]}
+	 | HTMLChildren]}]}].
+    
 
 transform_item(#xmlel{name = item,
 		      children = Children}) ->
@@ -13,21 +31,17 @@ transform_item(#xmlel{name = item,
 		    element(1, Child) =:= xmlel],
     Texts = lists:map(fun to_text/1, Children1),
     HTMLChildren = lists:map(fun to_html/1, Children1),
-    [{xmlelement, "body", [],
-      [{xmlcdata, lists:flatten(string:join(Texts, $\n))}]},
-     {xmlelement, "html", [{"xmlns", ?NS_XHTML_IM_s}],
-      [{xmlelement, "body", [{"xmlns", ?NS_XHTML_s}],
-	HTMLChildren}]}].
+    {Texts, HTMLChildren}.
 
 -define(NS_ATOM_s, "http://www.w3.org/2005/Atom").
 
 to_text(#xmlel{name = "entry", ns = ?NS_ATOM_s} = Entry) ->
     {Title, Link} = atom_info(Entry),
-    ["== ", Title,
-     if is_list(Link) -> [": ", Link];
-	true -> []
-     end,
-     " ==\n"];
+    [Title ++
+	if 
+	    is_list(Link) -> ": " ++ Link;
+	    true -> ""
+	end];
 
 to_text(El) ->
     %% TODO: pretty-print
@@ -52,7 +66,7 @@ to_html(El) ->
 atom_info(Entry) ->
     case exmpp_xml:get_element(Entry, "title") of
 	#xmlel{} = TitleEl ->
-	    Title = exmpp_xml:get_cdata(TitleEl);
+	    Title = binary_to_list(exmpp_xml:get_cdata(TitleEl));
 	_ -> Title = ""
     end,
     Link = find_suitable_atom_link(Entry),

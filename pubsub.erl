@@ -33,17 +33,14 @@ handle_event(JID, [#xmlel{name = items} = Items | Els]) ->
 	    unsubscribe(JID, Node);
 
 	Users ->
+	    Msg1 = exmpp_message:chat(),
+	    Msg2 = Msg1#xmlel{children =
+			      item_to_msg:transform_items(JID, Items)},
 	    lists:foreach(
-	      fun(Item) ->
-		      Msg1 = exmpp_message:chat(),
-		      Msg2 = Msg1#xmlel{children = item_to_msg:transform_item(Item)},
-		      lists:foreach(
-			fun(User) ->
-				client:send(exmpp_stanza:set_recipient(Msg2,
-								       User))
-			end, Users)
-	      end, exmpp_xml:get_elements(Items, item))
-
+	      fun(User) ->
+		      client:send(exmpp_stanza:set_recipient(Msg2,
+							     User))
+	      end, Users)
     end,
     handle_event(JID, Els);
 handle_event(JID, [_ | Els]) ->

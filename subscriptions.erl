@@ -1,6 +1,8 @@
 -module(subscriptions).
 
--export([init/0, subscribe/3, unsubscribe/3, get_subscribers_of/2]).
+-export([init/0,
+	 subscribe/3, unsubscribe/3,
+	 get_subscribers_of/2, get_user_subscriptions/1]).
 
 -record(subscription, {user, jid_node}).
 -record(pending_subscribed, {jid_node, requesters}).
@@ -95,6 +97,14 @@ get_subscribers_of(JID, Node) ->
 				[], ['$_']}])
 	end,
     {atomic, Subscriptions} = mnesia:transaction(F),
-    lists:map(fun(#subscription{user = User}) ->
-		      User
-	      end, Subscriptions).
+    [User
+     || #subscription{user = User} <- Subscriptions].
+
+get_user_subscriptions(User) ->
+    F = fun() ->
+		mnesia:read({subscription, User})
+	end,
+    {atomic, Subscriptions} = mnesia:transaction(F),
+    [{JID, Node}
+     || #subscription{jid_node = {JID, Node}} <- Subscriptions].
+
