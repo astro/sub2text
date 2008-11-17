@@ -5,7 +5,7 @@
 %% API
 -export([start_link/2, get_jid/0,
 	 register_listener/1, unregister_listener/1,
-	 send/1, send_recv/1]).
+	 send/1, send_recv/1, composing/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -49,6 +49,25 @@ send_recv(#xmlelement{} = Stanza) ->
     send_recv(exmpp_xml:xmlelement_to_xmlel(Stanza));
 send_recv(Stanza) ->
     gen_server:call(?SERVER, {send_and_wait, Stanza}, ?SEND_RECV_TIMEOUT * 1000).
+
+send_chatstate_to(To, Chatstate) ->
+    send(
+      (exmpp_stanza:set_recipient(
+	 exmpp_message:chat(), To))#xmlel{children =
+					  [{xmlelement, Chatstate,
+					    [{"xmlns", ?NS_CHATSTATES_s}],
+					    []}]}).
+
+composing(To, Fun) ->
+    send_chatstate_to(To, "composing"),
+    case (catch Fun()) of
+	{'EXIT', Reason} ->
+	    send_chatstate_to(To, "gone"),
+	    exit(Reason);
+	Result ->
+	    send_chatstate_to(To, "active"),
+	    Result
+    end.
 
 %%====================================================================
 %% gen_server callbacks

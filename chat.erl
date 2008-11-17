@@ -21,27 +21,29 @@ handle_packet(#xmlel{name = PktName} = Pkt) ->
 			 binary_to_list(
 			   exmpp_xml:get_cdata(Body))),
 	    io:format("Body: ~p~nBodyText: ~p~n",[Body,BodyText]),
-	    case handle_text(From, BodyText) of
-		{Text, HTML} ->
-		    Children =
-			[{xmlelement, "body", [],
-			  [{xmlcdata, Text}]},
-			 {xmlelement, "html", [{"xmlns", ?NS_XHTML_IM_s}],
-			  [{xmlelement, "body", [{"xmlns", ?NS_XHTML_s}],
-			    HTML}]}];
-		Text when is_list(Text) ->
-		    Children =
-			[{xmlelement, "body", [],
-			  [{xmlcdata, Text}]}]
-	    end,
+	    client:composing(
+	      From,
+	      fun() ->
+		      case handle_text(From, BodyText) of
+			  {Text, HTML} ->
+			      Children =
+				  [{xmlelement, "body", [],
+				    [{xmlcdata, Text}]},
+				   {xmlelement, "html", [{"xmlns", ?NS_XHTML_IM_s}],
+				    [{xmlelement, "body", [{"xmlns", ?NS_XHTML_s}],
+				      HTML}]}];
+			  Text when is_list(Text) ->
+			      Children =
+				  [{xmlelement, "body", [],
+				    [{xmlcdata, Text}]}]
+		      end,
 
-	    Children1 = lists:map(fun exmpp_xml:xmlelement_to_xmlel/1,
-				  Children),
-	    client:send(
-	      exmpp_stanza:set_recipient(
-		(exmpp_message:chat())#xmlel{children = Children1},
-		From)),
-	    ok;
+		      client:send(
+			exmpp_stanza:set_recipient(
+			  (exmpp_message:chat())#xmlel{children = Children},
+			  From)),
+		      ok
+	      end);
 	_ ->
 	    ignored
     end.

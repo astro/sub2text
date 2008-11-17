@@ -50,9 +50,14 @@ to_text(El) ->
 
 to_html(#xmlel{name = "entry", ns = ?NS_ATOM_s} = Entry) ->
     {Title, Link} = atom_info(Entry),
+    Title1 = case Title of
+		 [_ | _] -> Title;
+		 _ when is_list(Link) -> Link;
+		 _ -> "(Untitled)"
+	     end,
     {xmlelement, "p", [],
      [if is_list(Link) -> {xmlelement, "a", [{"href", Link}],
-			   [{xmlcdata, Title}]};
+			   [{xmlcdata, Title1}]};
 	 true -> {xmlcdata, Title}
       end]};
 
