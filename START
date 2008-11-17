@@ -1,4 +1,5 @@
 code:add_path("../../exmpp-dist/exmpp-0.9.0/ebin/").
 application:start(sasl).
 application:start(exmpp).
-client:start_link("collector@jabber.ccc.de/foo","traversal").
+application:start(sub2text).
+

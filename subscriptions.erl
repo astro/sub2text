@@ -6,8 +6,6 @@
 -record(pending_subscribed, {jid_node, requesters}).
 
 init() ->
-    mnesia:create_schema([node()]),
-    mnesia:start(),
     mnesia:create_table(subscription,
 			[{disc_copies, [node()]},
 			 {type, bag},
