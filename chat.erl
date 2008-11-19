@@ -15,12 +15,13 @@ handle_packet(#xmlel{name = PktName} = Pkt) ->
 	  exmpp_xml:get_attribute(Pkt, type, "normal"),
 	  exmpp_xml:get_element(Pkt, "body")} of
 	{message, PktType, #xmlel{} = Body} when PktType =/= "error" ->
-	    %% TODO: strip JID
-	    [_ | _] = From = exmpp_xml:get_attribute(Pkt, from, ""),
+	    [_ | _] = From1 = exmpp_xml:get_attribute(Pkt, from, ""),
+	    From = exmpp_jid:prepd_bare_jid_to_list(
+		     exmpp_jid:list_to_jid(From1)),
 	    BodyText = strip(
 			 binary_to_list(
 			   exmpp_xml:get_cdata(Body))),
-	    io:format("Body: ~p~nBodyText: ~p~n",[Body,BodyText]),
+
 	    client:composing(
 	      From,
 	      fun() ->
@@ -44,6 +45,7 @@ handle_packet(#xmlel{name = PktName} = Pkt) ->
 			  From)),
 		      ok
 	      end);
+
 	_ ->
 	    ignored
     end.
