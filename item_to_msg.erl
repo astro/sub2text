@@ -1,18 +1,17 @@
 -module(item_to_msg).
 
--export([transform_items/2]).
+-export([transform_items/3]).
 
 -include_lib("exmpp_xml.hrl").
 -include_lib("exmpp_nss.hrl").
 
-transform_items(JID, #xmlel{name = items} = Items) ->
-    Node = exmpp_xml:get_attribute(Items, node, ""),
+transform_items(JID, Node, Items) ->
     {Texts, HTMLChildren} =
 	lists:foldr(
 	  fun(Item, {Texts, HTMLChildren}) ->
 		  {Texts1, HTMLChildren1} = transform_item(Item),
 		  {Texts1 ++ Texts, HTMLChildren1 ++ HTMLChildren}
-	  end, {[], []}, exmpp_xml:get_elements(Items, item)),
+	  end, {[], []}, Items),
     [{xmlelement, "body", [],
       [{xmlcdata, string:join(
 		    ["Updates for " ++ JID ++ " " ++ Node
