@@ -2,7 +2,7 @@
 
 -export([start/0, stop/0, handle_packet/1]).
 
--include_lib("exmpp.hrl").
+-include_lib("exmpp/include/exmpp.hrl").
 
 start() ->
     client:register_listener(?MODULE).

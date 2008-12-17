@@ -11,8 +11,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--include_lib("exmpp.hrl").
--include_lib("exmpp_client.hrl").
+-include_lib("exmpp/include/exmpp.hrl").
+-include_lib("exmpp/include/exmpp_client.hrl").
 
 -record(state, {session, jid, listeners = [], waiters = [], lastid = 0}).
 -record(reply_waiter, {from_id, caller, call_time}).

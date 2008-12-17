@@ -2,8 +2,8 @@
 
 -export([transform_items/2]).
 
--include_lib("exmpp_xml.hrl").
--include_lib("exmpp_nss.hrl").
+-include_lib("exmpp/include/exmpp_xml.hrl").
+-include_lib("exmpp/include/exmpp_nss.hrl").
 
 transform_items(JID, #xmlel{name = items} = Items) ->
     Node = exmpp_xml:get_attribute(Items, node, ""),

@@ -2,7 +2,7 @@
 
 -export([start/0, stop/0, handle_packet/1]).
 
--include_lib("exmpp.hrl").
+-include_lib("exmpp/include/exmpp.hrl").
 
 %% TODO: roster handling for better PEP support
 %%-record(roster, {jid, subscription}).

@@ -2,7 +2,7 @@
 
 -export([start/0, stop/0, handle_packet/1, subscribe/2, unsubscribe/2]).
 
--include_lib("exmpp.hrl").
+-include_lib("exmpp/include/exmpp.hrl").
 
 -record(seen_item, {jni, last}).
 
