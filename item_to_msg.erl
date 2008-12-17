@@ -1,27 +1,34 @@
 -module(item_to_msg).
 
--export([transform_items/2]).
+-export([transform_items/3]).
 
 -include_lib("exmpp/include/exmpp_xml.hrl").
 -include_lib("exmpp/include/exmpp_nss.hrl").
 
-transform_items(JID, #xmlel{name = items} = Items) ->
-    Node = exmpp_xml:get_attribute(Items, node, ""),
+transform_items(JID, Node, Items) ->
     {Texts, HTMLChildren} =
 	lists:foldr(
 	  fun(Item, {Texts, HTMLChildren}) ->
 		  {Texts1, HTMLChildren1} = transform_item(Item),
 		  {Texts1 ++ Texts, HTMLChildren1 ++ HTMLChildren}
-	  end, {[], []}, exmpp_xml:get_elements(Items, item)),
-    [{xmlelement, "body", [],
-      [{xmlcdata, string:join(
-		    ["Updates for " ++ JID ++ " " ++ Node
-		     | Texts], "\n")}]},
-     {xmlelement, "html", [{"xmlns", ?NS_XHTML_IM_s}],
-      [{xmlelement, "body", [{"xmlns", ?NS_XHTML_s}],
-	[{xmlelement, "h3", [],
-	  [{xmlcdata, "Updates for " ++ JID ++ " " ++ Node}]}
-	 | HTMLChildren]}]}].
+	  end, {[], []}, Items),
+    [#xmlel{name = body,
+	    ns = ?NS_JABBER_CLIENT,
+	    children =
+	    [#xmlcdata{cdata = string:join(
+				 ["Updates for " ++ JID ++ " " ++ Node
+				  | Texts], "\n")}]},
+     #xmlel{name = html,
+	    ns = ?NS_XHTML_IM,
+	    children =
+	    [#xmlel{name = body,
+		    ns = ?NS_XHTML,
+		    children =
+		    [#xmlel{name = h3,
+			    ns = ?NS_XHTML,
+			    children =
+			    [#xmlcdata{cdata = "Updates for " ++ JID ++ " " ++ Node}]}
+		     | HTMLChildren]}]}].
     
 
 transform_item(#xmlel{name = item,
@@ -33,9 +40,9 @@ transform_item(#xmlel{name = item,
     HTMLChildren = lists:map(fun to_html/1, Children1),
     {Texts, HTMLChildren}.
 
--define(NS_ATOM_s, "http://www.w3.org/2005/Atom").
+-define(NS_ATOM, 'http://www.w3.org/2005/Atom').
 
-to_text(#xmlel{name = "entry", ns = ?NS_ATOM_s} = Entry) ->
+to_text(#xmlel{name = entry, ns = ?NS_ATOM} = Entry) ->
     {Title, Link} = atom_info(Entry),
     [Title ++
 	if 
@@ -48,28 +55,33 @@ to_text(El) ->
     exmpp_xml:node_to_list(El, [], []).
 
 
-to_html(#xmlel{name = "entry", ns = ?NS_ATOM_s} = Entry) ->
+to_html(#xmlel{name = entry, ns = ?NS_ATOM} = Entry) ->
     {Title, Link} = atom_info(Entry),
     Title1 = case Title of
 		 [_ | _] -> Title;
 		 _ when is_list(Link) -> Link;
 		 _ -> "(Untitled)"
 	     end,
-    {xmlelement, "p", [],
-     [if is_list(Link) -> {xmlelement, "a", [{"href", Link}],
-			   [{xmlcdata, Title1}]};
-	 true -> {xmlcdata, Title}
-      end]};
+    #xmlel{name = p,
+	   ns = ?NS_ATOM,
+	   children =
+	   [if is_list(Link) -> #xmlel{name = a,
+				       attrs = [#xmlattr{name = href,
+							 value = Link}],
+				       children =
+				       [#xmlcdata{cdata = Title1}]};
+	       true -> #xmlcdata{cdata = Title}
+	    end]};
 
 to_html(El) ->
     %% TODO: pretty-print
-    {xmlelement, "pre", [],
-     [{xmlcdata, exmpp_xml:node_to_list(El, [], [])}]}.
-
+    #xmlel{name = pre,
+	   children =
+	   [#xmlcdata{cdata = exmpp_xml:node_to_list(El, [], [])}]}.
 
 
 atom_info(Entry) ->
-    case exmpp_xml:get_element(Entry, "title") of
+    case exmpp_xml:get_element(Entry, title) of
 	#xmlel{} = TitleEl ->
 	    Title = binary_to_list(exmpp_xml:get_cdata(TitleEl));
 	_ -> Title = ""
@@ -78,19 +90,19 @@ atom_info(Entry) ->
     {Title, Link}.
 
 find_suitable_atom_link(El) ->
-    Links = exmpp_xml:get_elements(El, "link"),
+    Links = exmpp_xml:get_elements(El, link),
     LinksSorted = lists:sort(
 		    fun(Link1, Link2) ->
-			    Rel1 = exmpp_xml:get_attribute(Link1, "rel", false),
-			    Type1 = exmpp_xml:get_attribute(Link1, "type", false),
-			    Rel2 = exmpp_xml:get_attribute(Link2, "rel", false),
-			    Type2 = exmpp_xml:get_attribute(Link2, "type", false),
+			    Rel1 = exmpp_xml:get_attribute(Link1, rel, false),
+			    Type1 = exmpp_xml:get_attribute(Link1, type, false),
+			    Rel2 = exmpp_xml:get_attribute(Link2, rel, false),
+			    Type2 = exmpp_xml:get_attribute(Link2, type, false),
 			    compare([{Rel1, Rel2, ["alternate", false, "self"]},
 				     {Type1, Type2, ["application/xhtml+xml", "text/html", "text/plain"]}])
 		    end, Links),
     case LinksSorted of
 	[Link | _] ->
-	    exmpp_xml:get_attribute(Link, "href", false);
+	    exmpp_xml:get_attribute(Link, href, false);
 	_ ->
 	    false
     end.

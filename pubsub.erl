@@ -17,7 +17,7 @@ stop() ->
 handle_packet(#xmlel{name = PktName} = Pkt) ->
     case {PktName,
 	  exmpp_xml:get_attribute(Pkt, type, "normal"),
-	  exmpp_xml:get_element(Pkt, "event")} of
+	  exmpp_xml:get_element(Pkt, event)} of
 	{message, PktType,
 	 #xmlel{ns = ?NS_PUBSUB_EVENT,
 		children = Children}} when PktType =/= "error" ->
@@ -62,7 +62,7 @@ handle_event(JID, [#xmlel{name = items} = Items | Els]) ->
 		Users ->
 		    Msg1 = exmpp_message:chat(),
 		    Msg2 = Msg1#xmlel{children =
-				      item_to_msg:transform_items(JID, NewItems)},
+				      item_to_msg:transform_items(JID, Node, NewItems)},
 		    lists:foreach(
 		      fun(User) ->
 			      client:send(exmpp_stanza:set_recipient(Msg2,
@@ -84,22 +84,40 @@ subscribe(JID, Node) ->
 
 subscribe1(JID, Node) ->
     Iq =
-	{xmlelement, "iq", [{"to", JID}, {"type", "set"}],
-	 [{xmlelement, "pubsub", [{"xmlns", ?NS_PUBSUB_s}],
-	   [{xmlelement, "subscribe", [{"node", Node},
-				       {"jid", client:get_jid()}],
-	     []}]}]},
+	#xmlel{name = iq,
+	       ns = ?NS_JABBER_CLIENT,
+	       attrs = [#xmlattr{name = to, value = JID},
+			#xmlattr{name = type, value = "set"}],
+	       children =
+	       [#xmlel{name = pubsub,
+		       ns = ?NS_PUBSUB,
+		       children =
+		       [#xmlel{name = subscribe,
+			       ns = ?NS_PUBSUB,
+			       attrs = [#xmlattr{name = node,
+						 value = Node},
+					#xmlattr{name = jid,
+						 value = client:get_jid()}]}]}]},
     Answer = #xmlel{name = iq} = client:send_recv(Iq),
-    "result" = exmpp_xml:get_attribute(Answer, type, "type"),
+    "result" = exmpp_xml:get_attribute(Answer, type, ""),
     ok.
 
 unsubscribe(JID, Node) ->
     Iq =
-	{xmlelement, "iq", [{"to", JID}, {"type", "set"}],
-	 [{xmlelement, "pubsub", [{"xmlns", ?NS_PUBSUB_s}],
-	   [{xmlelement, "unsubscribe", [{"node", Node},
-					 {"jid", client:get_jid()}],
-	     []}]}]},
+	#xmlel{name = iq,
+	       ns = ?NS_JABBER_CLIENT,
+	       attrs = [#xmlattr{name = to, value = JID},
+			#xmlattr{name = type, value = "set"}],
+	       children =
+	       [#xmlel{name = pubsub,
+		       ns = ?NS_PUBSUB,
+		       children =
+		       [#xmlel{name = unsubscribe,
+			       ns = ?NS_PUBSUB,
+			       attrs = [#xmlattr{name = node,
+						 value = Node},
+					#xmlattr{name = jid,
+						 value = client:get_jid()}]}]}]},
     client:send_recv(Iq),
     ok.
 

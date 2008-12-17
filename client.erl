@@ -40,13 +40,9 @@ register_listener(Module) ->
 unregister_listener(Module) ->
     gen_server:call(?SERVER, {unregister_listener, Module}).
 
-send(#xmlelement{} = Stanza) ->
-    send(exmpp_xml:xmlelement_to_xmlel(Stanza));
 send(Stanza) ->
     gen_server:call(?SERVER, {send, Stanza}).
 
-send_recv(#xmlelement{} = Stanza) ->
-    send_recv(exmpp_xml:xmlelement_to_xmlel(Stanza));
 send_recv(Stanza) ->
     gen_server:call(?SERVER, {send_and_wait, Stanza}, ?SEND_RECV_TIMEOUT * 1000).
 
@@ -54,18 +50,17 @@ send_chatstate_to(To, Chatstate) ->
     send(
       (exmpp_stanza:set_recipient(
 	 exmpp_message:chat(), To))#xmlel{children =
-					  [{xmlelement, Chatstate,
-					    [{"xmlns", ?NS_CHATSTATES_s}],
-					    []}]}).
+					  [#xmlel{name = Chatstate,
+						  ns = ?NS_CHATSTATES}]}).
 
 composing(To, Fun) ->
-    send_chatstate_to(To, "composing"),
+    send_chatstate_to(To, composing),
     case (catch Fun()) of
 	{'EXIT', Reason} ->
-	    send_chatstate_to(To, "gone"),
+	    send_chatstate_to(To, gone),
 	    exit(Reason);
 	Result ->
-	    send_chatstate_to(To, "active"),
+	    send_chatstate_to(To, active),
 	    Result
     end.
 
@@ -81,7 +76,7 @@ init([JID, Password]) ->
     exmpp_session:login(Session),
     exmpp_session:send_packet(Session,
 			      exmpp_presence:set_status(
-                                exmpp_presence:available(), "Just booted")),
+                                exmpp_presence:available(), "")),
 
 
     {ok, #state{session = Session, jid = JID}}.
