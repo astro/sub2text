@@ -76,10 +76,11 @@ handle_event(JID, [_ | Els]) ->
 
 subscribe(JID, Node) ->
     case (catch subscribe1(JID, Node)) of
+	{'EXIT', _} -> error;
 	ok -> ok;
 	E ->
 	    error_logger:error_msg("subscribe error: ~p~n", [E]),
-	    error
+	    E
     end.
 
 subscribe1(JID, Node) ->
@@ -99,8 +100,13 @@ subscribe1(JID, Node) ->
 					#xmlattr{name = jid,
 						 value = client:get_jid()}]}]}]},
     Answer = #xmlel{name = iq} = client:send_recv(Iq),
-    "result" = exmpp_xml:get_attribute(Answer, type, ""),
-    ok.
+    case exmpp_xml:get_attribute(Answer, type, "") of
+	"result" -> ok;
+	"error" ->
+	    Error = exmpp_xml:get_element(Answer, error),
+	    What = exmpp_xml:get_element_by_ns(Error, ?NS_STANZA_ERRORS),
+	    What#xmlel.name
+    end.
 
 unsubscribe(JID, Node) ->
     Iq =
