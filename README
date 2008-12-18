@@ -1,0 +1,15 @@
+== Start
+
+Install exmpp as /usr/lib/erlang/exmpp-x.x/
+
+sub2text_app:start().
+
+
+== TODO
+
+* AdHoc Dataforms
+* One process per user
+* Strip JIDs
+* More content transformations
+* ATOM summaries
+* PEP support: caps, discovery, roster

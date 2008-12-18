@@ -7,6 +7,7 @@
 
 start() ->
     application:start(sasl),
+    application:start(exmpp),
     mnesia:create_schema([node()]),
     application:start(mnesia),
     application:start(sub2text).
