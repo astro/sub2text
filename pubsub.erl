@@ -1,6 +1,7 @@
 -module(pubsub).
 
 -export([start/0, stop/0, handle_packet/1, subscribe/2, unsubscribe/2]).
+-export([expiry_loop/0]).
 
 -include_lib("exmpp/include/exmpp.hrl").
 
@@ -9,9 +10,16 @@
 start() ->
     mnesia:create_table(seen_item, [{disc_copies, [node()]},
 				    {attributes, record_info(fields, seen_item)}]),
+    Expiry = spawn_link(fun() -> expiry_loop() end),
+    register(pubsub_seen_expiry, Expiry),
     client:register_listener(?MODULE).
 
 stop() ->
+    case whereis(pubsub_seen_expiry) of
+	Expiry when is_pid(Expiry) ->
+	    exit(Expiry, shutdown);
+	undefined -> ignore
+    end,
     client:unregister_listener(?MODULE).
 
 handle_packet(#xmlel{name = PktName} = Pkt) ->
@@ -45,7 +53,7 @@ handle_event(JID, [#xmlel{name = items} = Items | Els]) ->
 				    mnesia:write(#seen_item{jni = JNI, last = current_timestamp()}),
 				    true;
 				_ ->
-				    io:format("Skipping ~p~n", [JNI]),
+				    %%io:format("Skipping ~p~n", [JNI]),
 				    false
 			    end
 		    end, exmpp_xml:get_elements(Items, item))
@@ -129,6 +137,34 @@ unsubscribe(JID, Node) ->
 						 value = client:get_jid()}]}]}]},
     client:send_recv(Iq),
     ok.
+
+-define(EXPIRY_INTERVAL, 60).
+expiry_loop() ->
+    receive
+	after ?EXPIRY_INTERVAL * 1000 ->
+		expire_unseen(),
+		?MODULE:expiry_loop()
+	end.
+
+-define(EXPIRY_MAX_AGE, 7 * 24 * 60 * 60).
+expire_unseen() ->
+    MinLastSeen = current_timestamp() - ?EXPIRY_MAX_AGE,
+    F = fun() ->
+		mnesia:write_lock_table(seen_item),
+		mnesia:foldl(fun(#seen_item{last = Last}, C)
+				when Last >= MinLastSeen ->
+				     C;
+				(SeenItem, C) ->
+				     mnesia:delete_object(SeenItem),
+				     C + 1
+			     end, 0, seen_item)
+	end,
+    {atomic, Count} = mnesia:transaction(F),
+    if Count > 0 ->
+	    error_logger:info_msg("Purged ~B items which haven't been seen for ~B seconds~n", [Count, ?EXPIRY_MAX_AGE]);
+       true -> ignore
+    end,
+    Count.
 
 current_timestamp() ->
     {M, S, _} = now(),
