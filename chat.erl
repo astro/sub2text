@@ -76,15 +76,23 @@ strip(S) ->
 
 handle_text(From, "list") ->
     Subscriptions = subscriptions:get_user_subscriptions(From),
+    Subscriptions2 = lists:sort(
+		       fun({JID1, _}, {JID2, _}) when JID1 < JID2 ->
+			       true;
+			  ({JID, Node1}, {JID, Node2}) when Node1 < Node2 ->
+			       true;
+			  (_, _) ->
+			       false
+		       end, Subscriptions),
     {"Subscriptions:\n" ++ [JID ++ " " ++ Node ++ "\n"
-			    || {JID, Node} <- Subscriptions],
+			    || {JID, Node} <- Subscriptions2],
      [#xmlel{name = h3,
 	     ns = ?NS_XHTML,
 	     children = [#xmlcdata{cdata = "Subscriptions"}]},
       ?UL([?LI([?A("xmpp:" ++ JID ++ "?pubsub", JID),
 		#xmlcdata{cdata = " "},
 		?A("xmpp:" ++ JID ++ "?pubsub;node=" ++ Node, Node)])
-	   || {JID, Node} <- Subscriptions])]};
+	   || {JID, Node} <- Subscriptions2])]};
 
 handle_text(From, "subscribe " ++ JID_Node) ->
     [JID | NodeParts] = string:tokens(JID_Node, " "),
