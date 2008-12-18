@@ -37,7 +37,7 @@ transform_item(#xmlel{name = item,
 		 || Child <- Children,
 		    element(1, Child) =:= xmlel],
     Texts = lists:map(fun to_text/1, Children1),
-    HTMLChildren = lists:map(fun to_html/1, Children1),
+    HTMLChildren = lists:flatten(lists:map(fun to_html/1, Children1)),
     {Texts, HTMLChildren}.
 
 -define(NS_ATOM, 'http://www.w3.org/2005/Atom').
@@ -62,16 +62,17 @@ to_html(#xmlel{name = entry, ns = ?NS_ATOM} = Entry) ->
 		 _ when is_list(Link) -> Link;
 		 _ -> "(Untitled)"
 	     end,
-    #xmlel{name = p,
-	   ns = ?NS_ATOM,
-	   children =
-	   [if is_list(Link) -> #xmlel{name = a,
-				       attrs = [#xmlattr{name = href,
-							 value = Link}],
-				       children =
-				       [#xmlcdata{cdata = Title1}]};
-	       true -> #xmlcdata{cdata = Title}
-	    end]};
+    [#xmlel{name = p,
+	    ns = ?NS_ATOM,
+	    children =
+	    [if is_list(Link) -> #xmlel{name = a,
+					attrs = [#xmlattr{name = href,
+							  value = Link}],
+					children =
+					[#xmlcdata{cdata = Title1}]};
+		true -> #xmlcdata{cdata = Title}
+	     end]}
+     | find_atom_content(Entry)];
 
 to_html(El) ->
     %% TODO: pretty-print
@@ -106,6 +107,59 @@ find_suitable_atom_link(El) ->
 	_ ->
 	    false
     end.
+
+find_atom_content(#xmlel{name = entry,
+			 ns = ?NS_ATOM,
+			 children = Els}) ->
+    {_Score, Xhtml} = lists:foldl(fun find_atom_content1/2,
+				{0, none}, Els),
+    case Xhtml of
+	none -> [];
+	[_ | _] -> Xhtml;
+        _ -> [Xhtml]
+    end.
+	    
+
+find_atom_content1(#xmlel{name = Name,
+			  ns = ?NS_ATOM,
+			  children = [_ | _] = ElChildren} = El,
+		   {PrevScore, PrevEls})
+  when Name =:= summary;
+       Name =:= content ->
+    Type = exmpp_xml:get_attribute(El, type, "text"),
+
+    Score = bool_to_integer(Type == "xhtml") * 3 +
+	bool_to_integer(Type == "html") +
+	bool_to_integer(Name == summary) * 2 +
+	bool_to_integer(Name == content) * 4,
+    {NewScore, NewEls} =
+	case Type of
+	    "html" ->
+		Html = concat_binary([<<"<div>">>,
+				      exmpp_xml:get_cdata_from_list(ElChildren),
+				      <<"</div>">>]),
+		case (catch exmpp_xml:parse_document(Html)) of
+		    Error when element(1, Error) =:= xml_parser ->
+			{PrevScore, PrevEls};
+		    Parsed ->
+			{Score, Parsed}
+		end;
+	    "xhtml" ->
+		{Score, ElChildren};
+	    "text" ->
+		Text = exmpp_xml:get_cdata_from_list(ElChildren),
+		{Score, #xmlcdata{cdata = Text}}
+	end,
+    if
+	NewScore > PrevScore -> {NewScore, NewEls};
+	true -> {PrevScore, PrevEls}
+    end;
+
+find_atom_content1(_, {PrevScore, PrevEls}) ->
+    {PrevScore, PrevEls}.
+
+bool_to_integer(false) -> 0;
+bool_to_integer(true)  -> 1.
 
 compare([]) ->
     false;
