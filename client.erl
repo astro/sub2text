@@ -140,7 +140,9 @@ handle_info(timeout, #state{waiters = Waiters} = State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(Reason, _State) ->
+    error_logger:error_msg("client ~p terminatiing: ~p~n",
+			   [self(), Reason]),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
