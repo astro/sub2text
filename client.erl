@@ -122,7 +122,7 @@ handle_cast(_Msg, State) ->
 handle_info(#received_packet{raw_packet = Pkt},
 	    #state{waiters = Waiters} = State) ->
     %%error_logger:info_msg("Received ~p~n", [Pkt]),
-    error_logger:info_msg("Received ~p ~p from ~p",
+    error_logger:info_msg("Received ~p ~p from ~p~n",
 			  [exmpp_xml:get_attribute(Pkt, "type", ''),
 			   Pkt#xmlel.name,
 			   exmpp_stanza:get_sender(Pkt)]),
