@@ -121,7 +121,7 @@ handle_cast(_Msg, State) ->
 
 handle_info(#received_packet{raw_packet = Pkt},
 	    #state{waiters = Waiters} = State) ->
-    error_logger:info_msg("Received ~p~n", [Pkt]),
+    %%error_logger:info_msg("Received ~p~n", [Pkt]),
     From = exmpp_xml:get_attribute(Pkt, from, undefined),
     Id = exmpp_xml:get_attribute(Pkt, id, undefined),
     case lists:keysearch({From, Id}, #reply_waiter.from_id, Waiters) of
