@@ -135,7 +135,8 @@ handle_info(#received_packet{raw_packet = Pkt},
     end;
 
 handle_info(timeout, #state{waiters = Waiters} = State) ->
-    {noreply, State#state{waiters = expire_reply_waiters(Waiters)}};
+    {noreply, State#state{waiters = expire_reply_waiters(Waiters)},
+     ?SEND_RECV_TIMEOUT * 1000};
 
 handle_info(_Info, State) ->
     {noreply, State}.
