@@ -24,7 +24,7 @@ transform_items(JID, Node, Items) ->
 	    [#xmlel{name = body,
 		    ns = ?NS_XHTML,
 		    children =
-		    [#xmlel{name = h3,
+		    [#xmlel{name = h1,
 			    ns = ?NS_XHTML,
 			    children =
 			    [#xmlcdata{cdata = "Updates for " ++ JID ++ " " ++ Node}]}
@@ -62,7 +62,7 @@ to_html(#xmlel{name = entry, ns = ?NS_ATOM} = Entry) ->
 		 _ when is_list(Link) -> Link;
 		 _ -> "(Untitled)"
 	     end,
-    [#xmlel{name = p,
+    [#xmlel{name = h2,
 	    ns = ?NS_ATOM,
 	    children =
 	    [if is_list(Link) -> #xmlel{name = a,
