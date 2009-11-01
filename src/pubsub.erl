@@ -65,7 +65,8 @@ handle_event(JID, [#xmlel{name = items} = Items | Els]) ->
 	    case subscriptions:get_subscribers_of(JID, Node) of
 		
 		[] ->
-		    unsubscribe(JID, Node);
+		    %%unsubscribe(JID, Node);
+		    ignore;
 		
 		Users ->
 		    Msg1 = exmpp_message:chat(),
