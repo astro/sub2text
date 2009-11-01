@@ -85,6 +85,8 @@ handle_event(JID, [_ | Els]) ->
 
 subscribe(JID, Node) ->
     case (catch subscribe1(JID, Node)) of
+	{'EXIT', {timeout, _}} ->
+	    timeout;
 	{'EXIT', Reason} ->
 	    error_logger:error_msg("Error subscribing to ~p ~p:~n~p~n",
 				   [JID, Node, Reason]),
