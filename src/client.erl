@@ -70,7 +70,7 @@ composing(To, Fun) ->
 init([JID, Password]) ->
     Session = exmpp_session:start(),
     JID1 = exmpp_jid:parse(JID),
-    exmpp_session:auth_basic_digest(Session, JID1, Password),
+    exmpp_session:auth_basic(Session, JID1, Password),
     %% What's with SRV records?
     Host = exmpp_jid:prep_domain_as_list(JID1),
     _StreamId = exmpp_session:connect_TCP(Session, Host, 5222),
