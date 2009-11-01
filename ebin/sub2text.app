@@ -1,0 +1,1 @@
+../src/sub2text.app
