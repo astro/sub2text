@@ -28,7 +28,7 @@ start_link(JID, Password) ->
 
 get_jid() ->
     case gen_server:call(?SERVER, get_jid) of
-	#jid{} = JID ->
+	JID when ?IS_JID(JID) ->
 	    exmpp_jid:jid_to_list(JID);
 	JID ->
 	    JID
@@ -72,7 +72,7 @@ init([JID, Password]) ->
     JID1 = exmpp_jid:list_to_jid(JID),
     exmpp_session:auth_basic_digest(Session, JID1, Password),
     %% What's with SRV records?
-    _StreamId = exmpp_session:connect_TCP(Session, JID1#jid.domain, 5222),
+    _StreamId = exmpp_session:connect_TCP(Session, exmpp_jid:prep_domain_as_list(JID1), 5222),
     exmpp_session:login(Session),
     exmpp_session:send_packet(Session,
 			      exmpp_presence:set_status(
