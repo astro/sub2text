@@ -98,7 +98,7 @@ handle_text(From, "list") ->
 
 handle_text(From, "subscribe " ++ JID_Node) ->
     [JID | NodeParts] = string:tokens(JID_Node, " "),
-    Node = string:join(NodeParts, $ ),
+    Node = string:join(NodeParts, " "),
     case subscriptions:subscribe(From, JID, Node) of
 	ok -> "Ok, you will receive updates from " ++ Node;
 	What -> io_lib:format("Error: ~s", [What])
@@ -106,7 +106,7 @@ handle_text(From, "subscribe " ++ JID_Node) ->
 
 handle_text(From, "unsubscribe " ++ JID_Node) ->
     [JID | NodeParts] = string:tokens(JID_Node, " "),
-    Node = string:join(NodeParts, $ ),
+    Node = string:join(NodeParts, " "),
     subscriptions:unsubscribe(From, JID, Node),
     "Ok, you will not receive updates from " ++ Node ++ " any longer";
 
