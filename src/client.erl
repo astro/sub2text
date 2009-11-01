@@ -69,7 +69,7 @@ composing(To, Fun) ->
 %%====================================================================
 init([JID, Password]) ->
     Session = exmpp_session:start(),
-    JID1 = exmpp_jid:list_to_jid(JID),
+    JID1 = exmpp_jid:parse(JID),
     exmpp_session:auth_basic_digest(Session, JID1, Password),
     %% What's with SRV records?
     _StreamId = exmpp_session:connect_TCP(Session, exmpp_jid:prep_domain_as_list(JID1), 5222),
