@@ -27,18 +27,23 @@ handle_packet(#xmlel{name = PktName} = Pkt) ->
 	  exmpp_xml:get_attribute(Pkt, type, <<"normal">>),
 	  exmpp_xml:get_element(Pkt, event)} of
 	{message, PktType,
-	 #xmlel{ns = ?NS_PUBSUB_EVENT,
-		children = Children}} when PktType =/= <<"error">> ->
+	 #xmlel{ns = ?NS_PUBSUB_EVENT}} when PktType =/= <<"error">> ->
 	    From = exmpp_xml:get_attribute(Pkt, from, <<"">>),
-	    handle_event(From, Children);
+	    lists:foreach(fun(Event) ->
+				  lists:foreach(fun(ItemsEl) ->
+							handle_event(From, ItemsEl)
+						end, exmpp_xml:get_elements(Event, items))
+			  end, exmpp_xml:get_elements(Pkt, event));
 	_ ->
 	    ignored
     end.
 
 handle_event(_, []) ->
      ok;
-handle_event(JID, [#xmlel{name = items} = Items | Els]) ->
-    Node = exmpp_xml:get_attribute(Items, node, <<"">>),
+handle_event(JID, ItemsEl) ->
+    Node = exmpp_xml:get_attribute(ItemsEl, node, <<"">>),
+    Items = exmpp_xml:get_elements(ItemsEl, item),
+    io:format("event for ~p - ~p items~n", [Node, length(Items)]),
     {atomic, NewItems} =
 	mnesia:transaction(
 	  fun() ->
@@ -46,8 +51,9 @@ handle_event(JID, [#xmlel{name = items} = Items | Els]) ->
 
 		  lists:filter(
 		    fun(Item) ->
-			    Id = exmpp_xml:get_attribute(Item, id, <<"">>),
+			    Id = search_id(Item),
 			    JNI = {JID, Node, Id},
+			    io:format("JNI: ~p~n", [JNI]),
 			    case mnesia:read({seen_item, JNI}) of
 				[] ->
 				    mnesia:write(#seen_item{jni = JNI, last = current_timestamp()}),
@@ -56,8 +62,9 @@ handle_event(JID, [#xmlel{name = items} = Items | Els]) ->
 				    %%io:format("Skipping ~p~n", [JNI]),
 				    false
 			    end
-		    end, exmpp_xml:get_elements(Items, item))
+		    end, Items)
 	  end),
+io:format("~p new items~n", [length(NewItems)]),
     if
 	NewItems =:= [] ->
 	    ignore;
@@ -78,10 +85,7 @@ handle_event(JID, [#xmlel{name = items} = Items | Els]) ->
 								     User))
 		      end, Users)
 	    end
-    end,
-    handle_event(JID, Els);
-handle_event(JID, [_ | Els]) ->
-    handle_event(JID, Els).
+    end.
 
 subscribe(JID, Node) ->
     case (catch subscribe1(JID, Node)) of
@@ -164,6 +168,30 @@ expire_unseen() ->
        true -> ignore
     end,
     Count.
+
+search_id(Item) ->
+    case exmpp_xml:get_attribute(Item, id, <<"">>) of
+	 <<"">> -> search_id2(Item);
+	 Id -> io:format("attr id: ~p~n", [Id]), Id
+    end.
+
+search_id2(Item) ->
+    IdEls = exmpp_xml:get_elements(Item, id),
+    Ids = lists:map(fun exmpp_xml:get_cdata/1, IdEls),
+    IdsNotEmpty = lists:filter(fun(Id) -> size(Id) > 0 end,
+			       Ids),
+    case IdsNotEmpty of
+	[] -> search_id3(Item);
+	[Id | _] -> io:format("el id: ~p~n", [Id]), Id
+    end.
+
+search_id3(Item) ->
+    lists:foldl(fun(Child, <<"">>) ->
+			search_id(Child);
+		   (_, Id) ->
+			io:format("child id: ~p~n", [Id]), Id
+		end,
+		<<"">>, exmpp_xml:get_child_elements(Item)).
 
 current_timestamp() ->
     {M, S, _} = now(),

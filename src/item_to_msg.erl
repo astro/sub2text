@@ -10,14 +10,14 @@ transform_items(JID, Node, Items) ->
 	lists:foldr(
 	  fun(Item, {Texts, HTMLChildren}) ->
 		  {Texts1, HTMLChildren1} = transform_item(Item),
-		  {Texts1 ++ Texts, HTMLChildren1 ++ HTMLChildren}
+		  {list_to_binary([Texts1, Texts]), HTMLChildren1 ++ HTMLChildren}
 	  end, {[], []}, Items),
     [#xmlel{name = body,
 	    ns = ?NS_JABBER_CLIENT,
 	    children =
-	    [#xmlcdata{cdata = string:join(
-				 ["Updates for " ++ JID ++ " " ++ Node
-				  | Texts], "\n")}]},
+	    [#xmlcdata{cdata = list_to_binary(
+				 ["Updates for ", JID, " ", Node, Texts, "\n"]
+				)}]},
      #xmlel{name = html,
 	    ns = ?NS_XHTML_IM,
 	    children =
@@ -27,7 +27,9 @@ transform_items(JID, Node, Items) ->
 		    [#xmlel{name = h1,
 			    ns = ?NS_XHTML,
 			    children =
-			    [#xmlcdata{cdata = "Updates for " ++ JID ++ " " ++ Node}]}
+			    [#xmlcdata{cdata =list_to_binary(
+						["Updates for ", JID, " ", Node]
+					       )}]}
 		     | HTMLChildren]}]}].
     
 

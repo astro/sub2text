@@ -17,6 +17,10 @@ init() ->
 			[{attributes, record_info(fields, pending_subscribed)}]),
     ok.
 
+subscribe(User, JID, Node) when is_list(JID) ->
+    subscribe(User, list_to_binary(JID), Node);
+subscribe(User, JID, Node) when is_list(Node) ->
+    subscribe(User, JID, list_to_binary(Node));
 subscribe(User, JID, Node) ->
     case subscribe1(JID, Node) of
 	ok ->
@@ -68,17 +72,20 @@ subscribe1(JID, Node) ->
 	    Result
     end.
 
+unsubscribe(User, JID, Node) when is_list(JID) ->
+    unsubscribe(User, list_to_binary(JID), Node);
+unsubscribe(User, JID, Node) when is_list(Node) ->
+    unsubscribe(User, JID, list_to_binary(Node));
 unsubscribe(User, JID, Node) ->
     {atomic, Action} =
 	mnesia:transaction(
 	  fun() ->
 		  mnesia:delete_object(#subscription{user = User,
 						     jid_node = {JID, Node}}),
-		  case mnesia:select(subscription, [{#subscription{jid_node = {JID, Node},
-								   _ = '_'},
-						     [], ['$_']}], read, 1) of
-		      '$end_of_table' -> unsubscribe;
-		      _ -> keep
+		  case mnesia:match_object(#subscription{jid_node = {JID, Node},
+							 _ = '_'}) of
+		      [] -> unsubscribe;
+		      I -> keep
 		  end
 	  end),
     case Action of
@@ -89,6 +96,10 @@ unsubscribe(User, JID, Node) ->
     end.
 		      
 
+get_subscribers_of(JID, Node) when is_list(JID) ->
+    get_subscribers_of(list_to_binary(JID), Node);
+get_subscribers_of(JID, Node) when is_list(Node) ->
+    get_subscribers_of(JID, list_to_binary(Node));
 get_subscribers_of(JID, Node) ->
     F = fun() ->
 		mnesia:select(subscription,
