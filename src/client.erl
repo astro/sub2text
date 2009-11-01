@@ -106,7 +106,7 @@ handle_call({send_and_wait, Stanza}, Caller,
 		   lastid = LastId} = State) ->
     To = exmpp_xml:get_attribute(Stanza, to, undefined),
     Id = LastId + random:uniform(100),
-    IdS = lists:flatten(io_lib:format("~B", [Id])),
+    IdS = list_to_binary(io_lib:format("~B", [Id])),
     Stanza2 = exmpp_xml:set_attribute(Stanza, id, IdS),
     %%error_logger:info_msg("Sending and waiting ~s~n", [exmpp_xml:node_to_list(Stanza2, [], [])]),
     exmpp_session:send_packet(Session, Stanza2),
