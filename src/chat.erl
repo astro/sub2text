@@ -14,10 +14,10 @@ handle_packet(#xmlel{name = PktName} = Pkt) ->
     case {PktName,
 	  exmpp_xml:get_attribute(Pkt, type, "normal"),
 	  exmpp_xml:get_element(Pkt, body)} of
-	{message, PktType, #xmlel{} = Body} when PktType =/= "error" ->
-	    [_ | _] = From1 = exmpp_xml:get_attribute(Pkt, from, ""),
-	    From = exmpp_jid:prepd_bare_jid_to_list(
-		     exmpp_jid:list_to_jid(From1)),
+	{message, PktType, #xmlel{} = Body} when PktType =/= <<"error">> ->
+	    <<From1/binary>> = exmpp_xml:get_attribute(Pkt, from, ""),
+	    From = exmpp_jid:bare_to_binary(
+		     exmpp_jid:parse(From1)),
 	    BodyText = strip(
 			 binary_to_list(
 			   exmpp_xml:get_cdata(Body))),

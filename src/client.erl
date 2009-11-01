@@ -29,7 +29,7 @@ start_link(JID, Password) ->
 get_jid() ->
     case gen_server:call(?SERVER, get_jid) of
 	JID when ?IS_JID(JID) ->
-	    exmpp_jid:jid_to_list(JID);
+	    exmpp_jid:to_binary(JID);
 	JID ->
 	    JID
     end.
@@ -79,7 +79,7 @@ init([JID, Password]) ->
                                 exmpp_presence:available(), "")),
 
 
-    {ok, #state{session = Session, jid = JID}}.
+    {ok, #state{session = Session, jid = JID1}}.
 
 handle_call(get_jid, _From,
 	    #state{jid = JID} = State) ->

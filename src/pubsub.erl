@@ -24,12 +24,12 @@ stop() ->
 
 handle_packet(#xmlel{name = PktName} = Pkt) ->
     case {PktName,
-	  exmpp_xml:get_attribute(Pkt, type, "normal"),
+	  exmpp_xml:get_attribute(Pkt, type, <<"normal">>),
 	  exmpp_xml:get_element(Pkt, event)} of
 	{message, PktType,
 	 #xmlel{ns = ?NS_PUBSUB_EVENT,
-		children = Children}} when PktType =/= "error" ->
-	    From = exmpp_xml:get_attribute(Pkt, from, ""),
+		children = Children}} when PktType =/= <<"error">> ->
+	    From = exmpp_xml:get_attribute(Pkt, from, <<"">>),
 	    handle_event(From, Children);
 	_ ->
 	    ignored
@@ -38,7 +38,7 @@ handle_packet(#xmlel{name = PktName} = Pkt) ->
 handle_event(_, []) ->
      ok;
 handle_event(JID, [#xmlel{name = items} = Items | Els]) ->
-    Node = exmpp_xml:get_attribute(Items, node, ""),
+    Node = exmpp_xml:get_attribute(Items, node, <<"">>),
     {atomic, NewItems} =
 	mnesia:transaction(
 	  fun() ->
@@ -46,7 +46,7 @@ handle_event(JID, [#xmlel{name = items} = Items | Els]) ->
 
 		  lists:filter(
 		    fun(Item) ->
-			    Id = exmpp_xml:get_attribute(Item, id, ""),
+			    Id = exmpp_xml:get_attribute(Item, id, <<"">>),
 			    JNI = {JID, Node, Id},
 			    case mnesia:read({seen_item, JNI}) of
 				[] ->
@@ -98,22 +98,20 @@ subscribe1(JID, Node) ->
     Iq =
 	#xmlel{name = iq,
 	       ns = ?NS_JABBER_CLIENT,
-	       attrs = [#xmlattr{name = to, value = JID},
-			#xmlattr{name = type, value = "set"}],
+	       attrs = [?XMLATTR(to, JID),
+			?XMLATTR(type, <<"set">>)],
 	       children =
 	       [#xmlel{name = pubsub,
 		       ns = ?NS_PUBSUB,
 		       children =
 		       [#xmlel{name = subscribe,
 			       ns = ?NS_PUBSUB,
-			       attrs = [#xmlattr{name = node,
-						 value = Node},
-					#xmlattr{name = jid,
-						 value = client:get_jid()}]}]}]},
+			       attrs = [?XMLATTR(node, Node),
+					?XMLATTR(jid, client:get_jid())]}]}]},
     Answer = #xmlel{name = iq} = client:send_recv(Iq),
-    case exmpp_xml:get_attribute(Answer, type, "") of
-	"result" -> ok;
-	"error" ->
+    case exmpp_xml:get_attribute(Answer, type, <<"">>) of
+	<<"result">> -> ok;
+	<<"error">> ->
 	    Error = exmpp_xml:get_element(Answer, error),
 	    What = exmpp_xml:get_element_by_ns(Error, ?NS_STANZA_ERRORS),
 	    What#xmlel.name
@@ -123,18 +121,16 @@ unsubscribe(JID, Node) ->
     Iq =
 	#xmlel{name = iq,
 	       ns = ?NS_JABBER_CLIENT,
-	       attrs = [#xmlattr{name = to, value = JID},
-			#xmlattr{name = type, value = "set"}],
+	       attrs = [?XMLATTR(to, JID),
+			?XMLATTR(type, "set")],
 	       children =
 	       [#xmlel{name = pubsub,
 		       ns = ?NS_PUBSUB,
 		       children =
 		       [#xmlel{name = unsubscribe,
 			       ns = ?NS_PUBSUB,
-			       attrs = [#xmlattr{name = node,
-						 value = Node},
-					#xmlattr{name = jid,
-						 value = client:get_jid()}]}]}]},
+			       attrs = [?XMLATTR(node, Node),
+					?XMLATTR(jid, client:get_jid())]}]}]},
     client:send_recv(Iq),
     ok.
 
