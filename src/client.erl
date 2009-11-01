@@ -96,7 +96,6 @@ handle_call({unregister_listener, Module}, _From,
 
 handle_call({send, Stanza}, _From,
 	    #state{session = Session} = State) ->
-    %%error_logger:info_msg("Sending ~s~n", [exmpp_xml:node_to_list(Stanza, [], [])]),
     R = exmpp_session:send_packet(Session, Stanza),
     {reply, R, State};
 
@@ -108,7 +107,6 @@ handle_call({send_and_wait, Stanza}, Caller,
     Id = LastId + random:uniform(100),
     IdS = list_to_binary(io_lib:format("~B", [Id])),
     Stanza2 = exmpp_xml:set_attribute(Stanza, id, IdS),
-    %%error_logger:info_msg("Sending and waiting ~s~n", [exmpp_xml:node_to_list(Stanza2, [], [])]),
     exmpp_session:send_packet(Session, Stanza2),
     Waiter = #reply_waiter{from_id = {To, IdS},
 			   caller = Caller,
@@ -122,11 +120,6 @@ handle_cast(_Msg, State) ->
 
 handle_info(#received_packet{raw_packet = Pkt},
 	    #state{waiters = Waiters} = State) ->
-    %%error_logger:info_msg("Received ~p~n", [Pkt]),
-    error_logger:info_msg("Received ~p ~p from ~p~n",
-			  [exmpp_xml:get_attribute(Pkt, "type", ''),
-			   Pkt#xmlel.name,
-			   exmpp_stanza:get_sender(Pkt)]),
     From = exmpp_xml:get_attribute(Pkt, from, undefined),
     Id = exmpp_xml:get_attribute(Pkt, id, undefined),
     case lists:keysearch({From, Id}, #reply_waiter.from_id, Waiters) of
@@ -164,7 +157,7 @@ notify_listeners(Pkt, Listeners) ->
       fun(Listener, ignored) ->
 	      case (catch Listener:handle_packet(Pkt)) of
 		  {'EXIT', Reason} ->
-		      error_logger:error_msg("Error calling ~s for packet ~p:~n~p~n",
+		      error_logger:error_msg("Error calling ~p for packet ~p:~n~p~n",
 					     [Listener, Pkt, Reason]),
 		      ignored;
 		  ignored ->
