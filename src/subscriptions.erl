@@ -85,7 +85,7 @@ unsubscribe(User, JID, Node) ->
 		  case mnesia:match_object(#subscription{jid_node = {JID, Node},
 							 _ = '_'}) of
 		      [] -> unsubscribe;
-		      I -> keep
+		      _ -> keep
 		  end
 	  end),
     case Action of
