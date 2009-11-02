@@ -42,9 +42,9 @@ transform_item(#xmlel{name = item,
     HTMLChildren = lists:flatten(lists:map(fun to_html/1, Children1)),
     {Texts, HTMLChildren}.
 
--define(NS_ATOM, 'http://www.w3.org/2005/Atom').
+-define(NS_ATOM, "http://www.w3.org/2005/Atom").
 
-to_text(#xmlel{name = entry, ns = ?NS_ATOM} = Entry) ->
+to_text(#xmlel{name = "entry", ns = ?NS_ATOM} = Entry) ->
     {Title, Link} = atom_info(Entry),
     [Title ++
 	if 
@@ -57,7 +57,7 @@ to_text(El) ->
     exmpp_xml:node_to_list(El, [], []).
 
 
-to_html(#xmlel{name = entry, ns = ?NS_ATOM} = Entry) ->
+to_html(#xmlel{name = "entry", ns = ?NS_ATOM} = Entry) ->
     {Title, Link} = atom_info(Entry),
     Title1 = case Title of
 		 [_ | _] -> Title;
@@ -68,8 +68,7 @@ to_html(#xmlel{name = entry, ns = ?NS_ATOM} = Entry) ->
 	    ns = ?NS_ATOM,
 	    children =
 	    [if is_list(Link) -> #xmlel{name = a,
-					attrs = [#xmlattr{name = href,
-							  value = Link}],
+					attrs = [?XMLATTR(href, Link)],
 					children =
 					[#xmlcdata{cdata = Title1}]};
 		true -> #xmlcdata{cdata = Title}
@@ -96,21 +95,21 @@ find_suitable_atom_link(El) ->
     Links = exmpp_xml:get_elements(El, link),
     LinksSorted = lists:sort(
 		    fun(Link1, Link2) ->
-			    Rel1 = exmpp_xml:get_attribute(Link1, rel, false),
-			    Type1 = exmpp_xml:get_attribute(Link1, type, false),
-			    Rel2 = exmpp_xml:get_attribute(Link2, rel, false),
-			    Type2 = exmpp_xml:get_attribute(Link2, type, false),
+			    Rel1 = exmpp_xml:get_attribute_as_list(Link1, rel, false),
+			    Type1 = exmpp_xml:get_attribute_as_list(Link1, type, false),
+			    Rel2 = exmpp_xml:get_attribute_as_list(Link2, rel, false),
+			    Type2 = exmpp_xml:get_attribute_as_list(Link2, type, false),
 			    compare([{Rel1, Rel2, ["alternate", false, "self"]},
 				     {Type1, Type2, ["application/xhtml+xml", "text/html", "text/plain"]}])
 		    end, Links),
     case LinksSorted of
 	[Link | _] ->
-	    exmpp_xml:get_attribute(Link, href, false);
+	    exmpp_xml:get_attribute_as_list(Link, href, false);
 	_ ->
 	    false
     end.
 
-find_atom_content(#xmlel{name = entry,
+find_atom_content(#xmlel{name = "entry",
 			 ns = ?NS_ATOM,
 			 children = Els}) ->
     {_Score, Xhtml} = lists:foldl(fun find_atom_content1/2,
@@ -128,7 +127,7 @@ find_atom_content1(#xmlel{name = Name,
 		   {PrevScore, PrevEls})
   when Name =:= summary;
        Name =:= content ->
-    Type = exmpp_xml:get_attribute(El, type, "text"),
+    Type = exmpp_xml:get_attribute_as_list(El, type, "text"),
 
     Score = bool_to_integer(Type == "xhtml") * 3 +
 	bool_to_integer(Type == "html") +
